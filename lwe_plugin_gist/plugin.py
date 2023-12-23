@@ -2,7 +2,9 @@ import os
 import json
 import requests
 import urllib.parse
+
 from lwe.core.plugin import Plugin
+import lwe.core.util as util
 
 VISIBILITY_MAP = {
     "public": True,
@@ -32,6 +34,11 @@ class Gist(Plugin):
         self.default_visibility = self.config.get("plugins.gist.defaults.visibility")
         self.include_raw_link = self.config.get("plugins.gist.include_raw_link")
         self.exclude_system_messages = self.config.get("plugins.gist.exclude_system_messages")
+
+    def get_shell_completions(self, _base_shell_completions):
+        commands = {}
+        commands[util.command_with_leader("gist")] = util.list_to_completion_hash(VISIBILITY_MAP.keys())
+        return commands
 
     def content_from_conversation(self, conversation):
         content_parts = []
