@@ -39,12 +39,12 @@ class Gist(Plugin):
             if self.exclude_system_messages and message["role"] == "system":
                 continue
             role = message["role"].upper()
-            content_parts.append(f"## {role}\n")
             message_content = message["message"]
             if isinstance(message_content, dict):
-                message_content = json.dumps(message_content, indent=2)
-            content_parts.append(message_content)
-        return "\n\n".join(content_parts)
+                message_content = f"```json\n{json.dumps(message_content, indent=2)}\n```"
+            section = f"## {role}\n\n{message_content}"
+            content_parts.append(section)
+        return "\n\n---\n\n".join(content_parts)
 
     def create_gist(self, content, description, file_name, visibility):
         headers = {
@@ -70,6 +70,20 @@ class Gist(Plugin):
         escaped_file_name = urllib.parse.quote(file_name)
         return f"https://gist.githubusercontent.com/raw/{gist_id}/{escaped_file_name}"
 
+    def parse_args(self, conversation_data, args):
+        visibility = self.default_visibility
+        file_extension = self.default_file_extension
+        description = conversation_data["conversation"]["title"]
+        try:
+            visibility, file_extension, description = args.split(maxsplit=2)
+        except ValueError:
+            try:
+                visibility, file_extension = args.split()
+            except ValueError:
+                if args:
+                    visibility = args
+        return visibility, file_extension, description
+
     def command_gist(self, args):
         """
         Post a conversation to https://gist.github.com
@@ -92,17 +106,7 @@ class Gist(Plugin):
             return success, conversation_data, user_message
         if not conversation_data:
             return False, None, "No current conversation"
-        visibility = self.default_visibility
-        file_extension = self.default_file_extension
-        description = conversation_data["conversation"]["title"]
-        try:
-            visibility, file_extension, description = args.split(maxsplit=2)
-        except ValueError:
-            try:
-                visibility, file_extension = args.split()
-            except ValueError:
-                if args:
-                    visibility = args
+        visibility, file_extension, description = self.parse_args(conversation_data, args)
         if visibility in VISIBILITY_MAP:
             visibility = VISIBILITY_MAP[visibility]
         else:
